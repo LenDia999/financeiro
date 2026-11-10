@@ -1,6 +1,6 @@
 <?php
 // index.php
-require dirname(__DIR__) . '/vendor/autoload.php';
+$app = require dirname(__DIR__) . '/src/app.php';
 
 use Slim\Factory\AppFactory;
 
@@ -142,11 +142,4 @@ $app->delete('/lancamentos/{id}', function ($request, $response, $args) use (&$l
     $lancamentos = array_values(array_filter($lancamentos, fn($p) => $p['id'] !== (int) $args['id']));
     return $response->withStatus(204);
 });
-
-
-
-
-
-
-
 $app->run();
