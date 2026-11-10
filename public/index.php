@@ -134,6 +134,89 @@ $app->delete('/lancamentos/{id}', function ($request, $response, $args) use (&$l
     return $response->withStatus(204);
 });
 
+// ==========================================
+// RF14: Consultar o saldo atual
+// ==========================================
+$app->get('/lancamentos/saldo', function ($request, $response, $args) use (&$lancamentos) {
+    if (empty($lancamentos)) {
+        $response->getBody()->write(json_encode(['erro' => 'Nenhum lançamento encontrado para calcular o saldo']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    }
+
+    $totalReceitas = 0;
+    $totalDespesas = 0;
+
+    foreach ($lancamentos as $item) {
+        if ($item['tipo'] === 'receita') {
+            $totalReceitas += $item['valor'];
+        } elseif ($item['tipo'] === 'despesa') {
+            $totalDespesas += $item['valor'];
+        }
+    }
+
+    $saldoAtual = $totalReceitas - $totalDespesas;
+
+    $resultado = [
+        'total_receitas' => $totalReceitas,
+        'total_despesas' => $totalDespesas,
+        'saldo_atual' => $saldoAtual
+    ];
+
+    $response->getBody()->write(json_encode($resultado));
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+});
+
+// ==========================================
+// RF15: Consultar totais por período informado
+// ==========================================
+$app->get('/lancamentos/periodo', function ($request, $response, $args) use (&$lancamentos) {
+    // Pega os parâmetros da URL (Query Params) ex: ?data_inicio=2026-01-01&data_fim=2026-01-31
+    $queryParams = $request->getQueryParams();
+    $dataInicio = $queryParams['data_inicio'] ?? null;
+    $dataFim = $queryParams['data_fim'] ?? null;
+
+    // Valida se as datas foram enviadas na URL
+    if (!$dataInicio || !$dataFim) {
+        $response->getBody()->write(json_encode(['erro' => 'Informe os parâmetros data_inicio e data_fim na URL']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(400); // 400 Bad Request
+    }
+
+    $totalReceitas = 0;
+    $totalDespesas = 0;
+    $encontrouRegistros = false;
+
+    foreach ($lancamentos as $item) {
+        // Verifica se a data do lançamento está dentro do período estipulado
+        if ($item['data'] >= $dataInicio && $item['data'] <= $dataFim) {
+            $encontrouRegistros = true;
+            if ($item['tipo'] === 'receita') {
+                $totalReceitas += $item['valor'];
+            } elseif ($item['tipo'] === 'despesa') {
+                $totalDespesas += $item['valor'];
+            }
+        }
+    }
+
+    // Se passou pelo loop e não achou nada no período, retorna 404
+    if (!$encontrouRegistros) {
+        $response->getBody()->write(json_encode(['erro' => 'Nenhum lançamento encontrado para o período informado']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    }
+
+    $resultadoPeriodo = [
+        'periodo' => [
+            'inicio' => $dataInicio,
+            'fim' => $dataFim
+        ],
+        'total_receitas' => $totalReceitas,
+        'total_despesas' => $totalDespesas
+    ];
+
+    $response->getBody()->write(json_encode($resultadoPeriodo));
+    return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+});
+
+
 
 
 
